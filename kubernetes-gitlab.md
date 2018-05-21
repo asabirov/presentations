@@ -11,16 +11,19 @@
 
 
 # Когда использовать Ansible
-* Выделенный сервер
+* Изолированный проект
 * Редкие деплои (1-2 раза в год) 
+* Максимальная отдача от железа (высокий IO на диск)
+
+
 
 ---
 
 # Когда использовать Kubernetes
-* Не важно на чем хостить
-* Регулярные и автоматические деплои
-* Автоматическое масштабирование
-* Отказоустойчивость
+* Связанность с другими сервисами
+* Регулярные деплои
+* Неопределенная нагрузка
+* Нужна отказоустойчивость
 
 ----
 
@@ -41,7 +44,7 @@ kubectl apply -f app/ --namespace=app
 ```
 
 ---
-# Спеки
+# Spec'и
 
 ```
 app/
@@ -190,7 +193,7 @@ git push origin master
 ```
 ---
 
-# Как его достичь?
+# Чем он достигается?
 
 * В каждом репозитории собственный helm chart.
 * Инструкция для CI Pipeline'а
@@ -212,7 +215,7 @@ app/
   [файлы приложения]
 ```
 ---
-# Докер образ
+# Контейнеризация
 * Один проект - один образ
 * Базовый образ alpine (всего 2мб)
 * Multi-stage: сборка в первом образе, артефакты во втором
@@ -225,7 +228,7 @@ app/
 * Настройки в ```values.yaml``` или по окружениям ```values.dev.yaml```, ```values.staging.yaml```.
 
 ---
-# gitlab-ci.yml
+# Gitlab CI Pipeline (.gitlab-ci.yml)
 
 Должны быть описаны все стадии выкатки: ```pre_build```, ```test```, ```build```, ```deploy```, ```test_release```
 
@@ -239,7 +242,7 @@ app/
 ---
 
 
-# Pre-build стадия
+# Cтадия pre build
 ```yaml
 before_script:
    # Авторизация в Gitlab Registry
@@ -261,7 +264,7 @@ build:
 
 ```
 ---
-# Dockerfile.pre_build
+# Пример Dockerfile.pre_build
 
 ```
 FROM golang:1.9
@@ -366,7 +369,7 @@ deploy:
 ```
 ---
 
-# Авторизация в кластере K8s
+# Как Helm авторизается в кластере?
 
 ![](https://api.monosnap.com/rpc/file/download?id=hhAvIEZAdtKBuDBU9rdePmotvfOHes)
 
@@ -380,9 +383,9 @@ deploy:
   environment:
     name: production        #    ←-- этого достаточно
 ```
-
-# Стадия test_release 
-TODO
+---
+# Стадия test release
+TODO: проверить работоспособность теста
 
 ```yaml
 
@@ -402,9 +405,9 @@ test_release:
 ```
 
 ---
-# Тест
+# Пример Helm теста 
 
 ./helm/templates/tests/test-app.yaml
 ```yaml
-TODO
+TODO написать проверенный тест
 ```
