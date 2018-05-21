@@ -9,6 +9,10 @@
 
 ---
 
+# Абстракции Kubernetes
+![](https://camo.githubusercontent.com/4fdc9890c554db81b5df8b9efdc1deb665d6cdd1/68747470733a2f2f636c6475702e636f6d2f5967734c6737674d324c2e706e67)
+
+---
 
 # Когда использовать Ansible
 * Изолированный проект
@@ -411,3 +415,12 @@ test_release:
 ```yaml
 TODO написать проверенный тест
 ```
+
+
+---
+
+# Что почитать
+* https://docs.docker.com/engine/reference/builder/
+* https://kubernetes.io/docs/home/
+* https://docs.helm.sh/developers/
+* https://docs.gitlab.com/ee/ci/yaml/
