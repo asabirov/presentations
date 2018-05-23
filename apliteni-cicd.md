@@ -1,78 +1,48 @@
-CI/CD в Apliteni
+Как устроен CI/CD в Apliteni
 ===
+
+--- 
+
+# Способы доставки приложений
+
+* Ansible на bare metal
+* Helm/kubectl в кластер Kubernetes
+
 ---
 
-# Как работает Ansible
+# Ansible
 
 ![](https://www.tutorialspoint.com/ansible/images/ansible_works.jpg)
 
 ---
 
-# Как работает Kubernetes
-![](https://harishnarayanan.org/images/writing/kubernetes-django/kubernetes-architecture.svg)
+# Когда выкатываем на bare metal
 
----
-
-# Слой Kubernetes
-![](https://camo.githubusercontent.com/4fdc9890c554db81b5df8b9efdc1deb665d6cdd1/68747470733a2f2f636c6475702e636f6d2f5967734c6737674d324c2e706e67)
-
----
-
-# Когда использовать Ansible
-* Изолированный проект
-* Редкие деплои (1-2 раза в год) 
-* Нужна высокая скорость чтения-записи на диск
-
+Высокий IO на диск
 
 
 ---
 
-# Когда использовать Kubernetes
-* Во всех остальных случаях
+# Kubernetes
+![](https://www.redhat.com/cms/managed-files/kubernetes-diagram-2-824x437.png)
 
-----
-
-# Подключение к кластеру K8s
-```
-kubectl config set-credentials cluster-user \
-        --client-certificate=~/.kube/user.crt \
-        --embed-certs=true    # импортировать в конфиг
-kubectl config set-cluster hz1 --server=https://1.2.3.4:6443
-kubectl config set-context hz1 --user=cluster-user
-```
-
----
-# Проверяем
-
-```shell
-$ kubectl config view                                         
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: REDACTED
-    server: https://1.2.3.4:6443
-  name: hz1
-```
-
-```shell
-$ kubectl cluster-info
-Kubernetes master is running at https://1.2.3.4:6443
-KubeDNS is running at https://1.2.3.4:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
-```
-
-```shell
-$ kubectl get nodes 
-NAME             STATUS    ROLES     AGE       VERSION
-hz1-master-01   Ready     master    20d       v1.10.2
-hz1-worker-02   Ready     <none>    20d       v1.10.2
-hz1-worker-03   Ready     <none>    20d       v1.10.2
-hz1-worker-04   Ready     <none>    20d       v1.10.2
-```
 
 ---
 
+# Kubernetes
 
-# Деплой в K8s
+![](https://www.jorgedelacruz.es/wp-content/uploads/2018/01/kubernetes-021_ccb09431d5a08b130c35f1a875e724d4.png)
+
+
+---
+
+# Когда выкатываем в Kubernetes
+
+Во всех остальных случаях
+
+---
+
+# kubectl
 
 
 ```shell
@@ -83,7 +53,8 @@ ingress "app" created
 ```
 
 ---
-# Содержимое app/
+
+# Спецификации kubernetes
 
 ```
 app/
@@ -93,7 +64,7 @@ app/
 ```
 ---
 
-# Пример spec'а
+# deployment.yaml
 
 ```
 apiVersion: apps/v1
@@ -116,31 +87,34 @@ spec:
 ```
 
 ---
-# Версия спецификации 
-```yaml
-apiVersion: apps/v1
-```
-
----
-# Тип объекта
+# kind
 ```yaml
 kind: Deployment
+...
 ```
-
-
-## Другие виды объектов:
-Рабочие объекты: Pod, ReplicaSet, StatefulSet, JobCron
-Discovery и балансировка: Service, Ingress
-Конфиги: ConfigMap, Secret
-Хранилище: StorageClass, PersistentVolumeClaim, Volume
-
-https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/
-  
 ---
 
-# Детали объекта 
+# Варианты kind (объекты kubernetes)
+Рабочие объекты: Pod, StatefulSet, Job, CronJob, ...
+Discovery и балансировка: Service, Ingress, ...
+Конфиги: ConfigMap, Secret, ...
+Хранилище: StorageClass, PersistentVolumeClaim, Volume, ...
+
+---
+
+# apiVersion
+```yaml
+...
+apiVersion: apps/v1
+...
+```
+
+---
+
+# spec
 
 ```yaml
+...
 spec:
   replicas: 2 # количество реплик
   selector:
@@ -157,27 +131,32 @@ spec:
 ```
 
 ---
-
-
-# Недостатки выкатки через kubectl
-
-* Все объекты в одну кучу 
-* Нет поддержки переменных
-
-
+# Helm-Tiller
+![](https://api.monosnap.com/rpc/file/download?id=FktkYR3OhKCVCwQwBchNM1gpHxMLiL)
 
 ---
+
 # Helm
+* gotemplates
+* ```helm status RELEASE```
+* ```helm dep```
+* ```helm test RELEASE```
+* ```helm rollback```
+* Наличие готовых chart'ов
+
+---
+# helm
 ```
-helm install app-chart/ --namespace=app --name=app-release
+helm install app-chart/ --namespace=app --name=app-service-1
 ```
 ---
-# Helm Chart
+# Chart
 
 ```
 app-chart/
     Chart.yaml
     values.yaml    
+    requirements.yaml
     templates/
          deployment.yaml
          service.yaml
@@ -186,16 +165,17 @@ app-chart/
 
 ---
 
-# Пример Chart.yaml
+# Chart.yaml
 
 ```yaml
 apiVersion: v1
-version: 0.1.1    # Версия chart'а, не приложения
+version: 0.1.1  
 description: Management system for GDBC
-name: gdbc-management-api
+name: gdbc-management
 ```
+
 ---
-# Пример values.yaml
+# values.yaml
 ```
 resources:
   requests:
@@ -215,7 +195,7 @@ service:
 ```
 ---
 
-# Пример шаблона deployment.yaml
+# templates/deployment.yaml
 
 ```yaml
 apiVersion: apps/v1
@@ -240,145 +220,64 @@ spec:
 ```
 
 ---
-# Хелперы
+# templates/_helpers.tpl
 
-./app-chart/templates/_helpers.tpl
 ```
 {{- define "project.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 ```
- 
-./app-chart/templates/deplyment.yaml
-```yaml
-metadata:
-  name: {{ template "project.name" . }}
-```
 
 
 ---
 
-# Недостаки Helm
-* Нельзя деплоить сразу в несколько namespace'ов
-
+# CI/DI
 
 
 ---
 
-# Что дает Helm
-* Поддержка gotemplates
-* Отслеживание состояния релиза ```helm status RELEASE```
-* Встроенное тестирование релиза ```helm test RELEASE```
-* Откат релиза ```helm rollback```
-* Наличие готовых chart'ов
 
----
-
-# Правильный деплой
+# Деплой со стороны разработчика
 
 ```bash
 git push origin master
 ```
+
 ---
 
-# Как он достигается?
+# CI/DI Pipeline
 
-* Dockerfile
-* Helm chart
-* gitlab-ci.yml
+![](https://api.monosnap.com/rpc/file/download?id=NSQw93RpEBWjTHVCyb7lp06zxdx9PW)
+
+
+---
+
+# Подготовка проекта
+
+* Dockerfile (Dockerfile.pre_build, Dockerfile.final_build)
+* helm/
+* .gitlab-ci.yml
 
 ---	
 
-# Пример проекта
-```
-app/
-  .gitlab-ci.yaml  
-  helm/
-    templates/...
-    Chart.yaml
-    values.yaml
-  Dockerfile.pre_build
-  Dockerfile.final_build
-  ...
-```
----
 # Контейнеризация 
-* Один проект - один образ (артефакт)
-* Все настройки пробрасываются через ENV параметры
+* Сборка в 2 стадии: pre_build, final_build
+* Один итоговый образ
+* Внешняя конфигурация параметры окружения (ENV)
 * Версионирование приложения и образа
 
 ---
 
-# ENV параметры
+# Почему 2 стадии сборки образа?
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-...
-spec:
-  template:
-    spec:
-      containers:
-        - name: appx
-          env
-            - name: LOG_LEVEL
-              value: {{ .Values.service.logLevel }}
-```              
-```go
-import "os"
-
-func getLogLevel() bool {
-	return os.Getenv("LOG_LEVEL")
-}
-```
-
----
-# Версионирование
-
-* COMMIT SHA
-* Файл VERSION
-* В исходном коде (например, в version.go)
-
---- 
-# Helm Chart
-* Описание приложения для развертки в kubernetes
-* Настройки в ```values.yaml``` или по окружениям ```values.dev.yaml```, ```values.staging.yaml```.
-
----
-# .gitlab-ci.yml
-
-Описание стадий: ```pre_build```, ```test```, ```build```, ```deploy```, ```test_release```
+* Тестам нужны исходники 
+* Тестам нужны jest, cypress, runner'ы, go-cmd и т.д.
+* Финальному образу минимальный размер
 
 ---
 
-# Авторизация в приватном Registry
-```yaml
-before_script:
-   - docker login 
-     -u gitlab-ci-token 
-     -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
-```
----
 
-# Cтадия pre-build
-```yaml
-
-build:
-  stage: build
-  script:       
-    - export APP_VERSION=app-${CI_COMMIT_SHA}
-    - docker build --pull
-      -t ${PRE_BUILD_IMAGE}
-      --build-arg APP_VERSION=${APP_VERSION} # Версия
-      --build-arg DATE=${DATE}
-      --build-arg PROJECT_PATH=${PROJECT_PATH}
-      .
-      -f Dockerfile
-    - docker push ${PRE_BUILD_IMAGE}
-
-```
----
-# Пример Dockerfile.pre_build
+# Dockerfile.pre_build
 
 ```
 FROM golang:1.9
@@ -403,6 +302,98 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
 ```
 
 ---
+
+# Параметры окружения (ENV)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+...
+spec:
+  template:
+    spec:
+      containers:
+        - name: appx
+          env
+            - name: LOG_LEVEL
+              value: {{ .Values.service.logLevel }}
+```              
+---
+
+# На стороне приложения
+```go
+import "os"
+
+func getLogLevel() bool {
+	return os.Getenv("LOG_LEVEL")
+}
+```
+
+---
+
+# Версионирование
+
+* COMMIT SHA
+* version.go, version.ts
+
+--- 
+
+# helm/
+
+```
+helm/
+    Chart.yaml
+    requirements.yaml
+    values.yaml    
+    values.dev.yaml    
+    values.staging.yaml    
+    templates/
+         deployment.yaml
+         service.yaml
+         ingress.yaml
+```
+---
+# .gitlab-ci.yml
+
+```
+...
+stages:
+  - pre_build
+  - test
+  - build_image
+  - deploy
+  - test_release
+...
+```
+
+---
+
+# Gitlab Registry
+```yaml
+before_script:
+ - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} 
+     ${CI_REGISTRY}
+```
+---
+
+# Cтадия pre-build
+```yaml
+
+build:
+  stage: build
+  script:       
+    - export APP_VERSION=app-${CI_COMMIT_SHA}
+    - docker build --pull
+      --build-arg APP_VERSION=${APP_VERSION}   ←--       
+      -t ${PRE_BUILD_IMAGE}
+      -f Dockerfile.pre_build          ←--       
+      .
+      
+    - docker push ${PRE_BUILD_IMAGE}
+
+```
+
+---
 # Стадия test
 
 ```yaml
@@ -414,27 +405,25 @@ test:
         make test
 ```    
 ---    
-# Интеграционные тесты (DinD)
+# Использование services (DinD)
 
 
 ```yaml
 test:
   stage: test
   tags:
-    - docker       # запуск на runner'е с docker
-  services:        # поднимет сервисы в контейнерах
-    - postgres:9.8
-    - redis:2.5
+    - docker  ←--
+  services:  
+    - postgres:9.8   ←--
+    - redis:2.5      ←--
   script: 
     - ping postgres
 ```
 
-В логе в runner job:
-```shell 
-$ ping postgres
-PING postgres (10.2.2.2): 56 data bytes
-64 bytes from 10.2.2.2: icmp_seq=0 ttl=53 time=95.219 ms
-```
+Docker executor не кэширует образы 
+https://gitlab.com/gitlab-org/gitlab-ce/issues/17861
+ 
+
 
 ---
 
@@ -459,11 +448,6 @@ build:
       -f Dockerfile.final_build
     - docker push ${CI_REGISTRY_IMAGE}
 ```     
----
-# Почему не multi-stage из Docker?
-
-Для тестов нужны исходники
-
 
 ---
 # Стадия deploy
@@ -492,39 +476,11 @@ deploy:
 ```
 ---
 
-# Helm install / upgrade
+# Проблема с helm install --upgrade
 
-Есть баг с ```helm upgrade --install``` 
+Есть баг с ```helm upgrade --install``` если релиз в статусе ```FAILED```
 https://github.com/kubernetes/helm/issues/3353
 
-Обходное решение:
-```yaml
-script:
-  - export DEPLOYS=$(helm ls | grep ${CI_PROJECT_NAME} | wc -l)
-  - if [ ${DEPLOYS}  -eq 0 ]; then
-       helm install ...
-    else
-    	helm upgrade ...
-    fi 
-```
-
----
-
-# Авторизация CI/CD в кластере
-
-![](https://api.monosnap.com/rpc/file/download?id=hhAvIEZAdtKBuDBU9rdePmotvfOHes)
-
----
-
-# Настройка Environment
-
-```yaml 
-
-deploy:
-  ...
-  environment:
-    name: staging   
-```
 ---
 # Стадия test release
 
@@ -549,9 +505,8 @@ test_release:
 ```
 
 ---
-# Пример теста для Helm
+# templates/tests/test-app.yaml
 
-./helm/templates/tests/test-app.yaml
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -573,38 +528,14 @@ spec:
   restartPolicy: Never
 ```
 
----
-# Как работает тест
-* Запускает pod с контейнером
-
-* Выполняет command
-  ```
-  command: ['command'] 
-  ```
-
-* С параметрами:
-  ```yaml
-  args: ['...']
-  ```
-
-* Тест падает, если:
- 	* ошибка в ```stderr```
-	* exit(1) или exit(2)  
-
-
 
 
 ---
-# Результат работы CI/CD
-
-![](https://api.monosnap.com/rpc/file/download?id=NSQw93RpEBWjTHVCyb7lp06zxdx9PW)
-
-![](https://api.monosnap.com/rpc/file/download?id=32P7h46VvQjO14mVOm5GIjiFZuUylh)
-
----
-# Текущие проблемы
-
-* DinD не кэширует образы, следовательно, медленный  https://gitlab.com/gitlab-org/gitlab-ce/issues/17861
+# Дальнейшее развитие
+* Интеграционные тесты в kubernetes (helm + Job): 
+```helm install --namespace=test-app-namespace ...```
+* Автоматическое удаление старых образов
+* Собственный репозиторий chart'ов
 
 
 ---
